@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.foodtruck.dao.OrderDetailDAO">
+
+	<!-- 주문 상세 정보 -->
+	<select id="getOrderDetail" resultMap="OrderDetailMap">
+
+		SELECT * FROM ORDERDETAIL
+		WHERE ORDER_NO=#{ordNo}
+
+	</select>
+
+   	<!-- 주문 상세 리스트 -->
+  	<select id="getOrderDetailList" resultMap="OrderDetailMap" parameterType="map">
+   
+   		SELECT D.LICENSE_NO, O.PROD_NO, O.ORD_NO, P.PROD_NAME, O.ORD_QTY, O.ORD_PRICE,D.COOK_STAT,D.ORD_DATE, F.FTRUCK_NAME, D.ORD_REQ
+     	FROM ORDERDETAIL O, PRODUCT P, ORDERS D, FOODTRUCK F
+      	WHERE
+      	O.ORD_NO = D.ORD_NO
+      	AND P.PROD_NO = O.PROD_NO
+      	AND D.ORD_DLV_YN='N'
+      	AND D.LICENSE_NO IN (SELECT L.LICENSE_NO FROM LICENSE L WHERE L.MEM_ID = #{memId})
+      	AND P.FTRUCK_NO = F.FTRUCK_NO
+      	AND D.LICENSE_NO = F.LICENSE_NO
+      	<choose>
+      		<when test="ordDate != null and ordDate != '' and licenseNo != null and licenseNo != ''">
+      			AND D.ORD_DATE = #{ordDate} 
+      			AND D.LICENSE_NO=#{licenseNo}
+      			ORDER BY O.ORD_NO DESC,D.ORD_DATE DESC
+      		</when>
+      		<otherwise>
+        		AND D.ORD_DATE IN (SELECT TO_CHAR(SYSDATE,'YYMMDD')FROM DUAL)
+        		ORDER BY O.ORD_NO DESC, D.ORD_DATE DESC   
+        	</otherwise>
+        </choose>
+        
+   	</select>
+
+	<!-- 주문 등록  -->
+	<insert id="insertOrderDetail" parameterType="map">
+		
+		INSERT INTO ORDERDETAIL
+		(ORD_NO, PROD_NO, ORD_QTY, ORD_PRICE)
+		VALUES
+		(#{ordNo}, #{prodNo}, #{ordQty}, (#{ordPrice} * #{ordQty}))
+	
+	</insert>
+	
+	<!-- 주문한 목록(영수증 역할)  -->
+	<select id="getOrderInfoList" resultMap="OrderDetailMap">
+		
+		SELECT D.*, O.*, P.*
+		FROM ORDERDETAIL D
+		INNER JOIN ORDERS O
+		ON D.ORD_NO = O.ORD_NO
+		AND D.ORD_NO=#{ordNo}
+		INNER JOIN PRODUCT P
+		ON D.PROD_NO = P.PROD_NO
+	
+	</select>
+	
+	<!-- 주문 삭제  -->
+	<delete id="deleteOrderDetail">
+		
+		DELETE FROM ORDERDETAIL
+		WHERE ORD_NO=#{ordNo}
+		
+	</delete>
+
+	<!-- OrderDetailVO -->
+	<resultMap type="OrderDetailVO" id="OrderDetailMap" extends="OrderMap">
+		<result column="PROD_NO" property="prodNo" />
+		<result column="ORD_NO" property="ordNo" />
+		<result column="PROD_NAME" property="prodName" />
+		<result column="ORD_REQ" property="ordReq"/>
+		<result column="ORD_QTY" property="ordQty" />
+		<result column="ORD_PRICE" property="ordPrice" />
+		<result column="MEM_ID" property="memId" />
+	</resultMap>
+	
+	<resultMap type="OrderVO" id="OrderMap">
+		<result column="ORD_NO" property="ordNo"/>
+		<result column="ORD_NAME" property="ordName"/>
+		<result column="ORD_TEL" property="ordTel"/>
+		<result column="ORD_REQ" property="ordReq"/>
+		<result column="ORD_DATE" property="ordDate"/>
+		<result column="ORD_RSV_DATE" property="ordRsvDate"/>
+		<result column="ORD_DLV_YN" property="ordDlyYn"/>
+		<result column="ORD_STAT" property="ordStat"/>
+		<result column="COOK_STAT" property="cookStat"/>
+		<result column="MEM_ID" property="memId"/>
+		<result column="LICENSE_NO" property="licenseNo"/>
+		<result column="SUM_PRICE" property="sumPrice"/>
+		<result column="FTRUCK_NAME" property="ftruckName"/>
+	</resultMap>
+	
+</mapper>

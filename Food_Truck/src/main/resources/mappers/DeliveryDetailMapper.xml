@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.foodtruck.dao.DeliveryDetailDAO">
+
+	<!-- 배달상세 등록  -->
+	<insert id="insertDeliveryDetail">
+	
+		INSERT INTO DELIVERYDETAIL
+		(ORD_NO, DLV_STATE, DLV_ADDR)
+		VALUES
+		(#{ordNo}, #{dlvState}, #{dlvAddr})
+
+	</insert>
+	
+	<!-- 배달상세 리스트  -->
+	<select id="getDeliveryDetailList" resultMap="DeliveryDetailMap" parameterType="map">
+	
+   		SELECT D.LICENSE_NO, O.PROD_NO, O.ORD_NO, P.PROD_NAME, O.ORD_QTY, O.ORD_PRICE,D.COOK_STAT,D.ORD_DATE,D.ORD_DLV_YN ,D2.DLV_ADDR,F.FTRUCK_NAME
+     	FROM ORDERDETAIL O, PRODUCT P, ORDERS D,DELIVERYDETAIL D2,FOODTRUCK F
+      	WHERE
+      	O.ORD_NO = D.ORD_NO 
+      	AND P.PROD_NO = O.PROD_NO
+        AND D2.ORD_NO= D.ORD_NO
+      	AND D.LICENSE_NO IN (SELECT L.LICENSE_NO FROM LICENSE L WHERE L.MEM_ID = #{memId})
+        AND D.ORD_DLV_YN='Y'
+        AND P.FTRUCK_NO = F.FTRUCK_NO
+      	AND D.LICENSE_NO = F.LICENSE_NO
+      	<choose>
+      		<when test="ordDate != null and ordDate != '' and licenseNo != null and licenseNo != ''">
+      			AND D.ORD_DATE = #{ordDate} 
+      			AND D.LICENSE_NO=#{licenseNo}
+      			ORDER BY O.ORD_NO DESC,D.ORD_DATE DESC
+      		</when>
+      		<otherwise>
+        		AND D.ORD_DATE IN (SELECT TO_CHAR(SYSDATE,'YYMMDD')FROM DUAL)
+        		ORDER BY O.ORD_NO DESC, D.ORD_DATE DESC   
+        	</otherwise>
+        </choose>
+        
+   	</select>
+   	
+   	<!-- 배달상세 수정  -->
+   	<update id="dlecookStatChange">
+
+		UPDATE ORDERS
+		SET COOK_STAT=#{cookStat}
+		WHERE ORD_NO=#{ordNo}
+		
+	</update>
+	
+	<!-- dlyTimeUpdate  -->
+	<update id="dlyTimeUpdate">
+	
+		UPDATE DELIVERYDETAIL 
+		SET DLV_DATE=#{dlvDate}
+		WHERE ORD_NO=#{ordNo}
+
+	</update>
+	
+	<!-- 배달내역 삭제 할 수 있도록 -->
+	<delete id="deleteDeliveryDetail">
+		
+		DELETE FROM DELIVERYDETAIL
+		WHERE ORD_NO=#{ordNo}
+	
+	</delete>
+	
+	<!-- reulstMap -->
+	<resultMap type="DeliveryDetailVO" id="DeliveryDetailMap" extends="OrderDetailMap">
+		<result column="ORD_NO" property="ordNo" />
+		<result column="DLV_STATE" property="dlvState" />
+		<result column="DLV_ADDR" property="dlvAddr" />
+		<result column="DLV_DATE" property="dlvDate" />
+	</resultMap>
+	
+	<resultMap type="OrderDetailVO" id="OrderDetailMap" extends="OrderMap">
+		<result column="PROD_NO" property="prodNo" />
+		<result column="ORD_NO" property="ordNo" />
+		<result column="PROD_NAME" property="prodName" />
+		<result column="ORD_REQ" property="ordReq"/>
+		<result column="ORD_QTY" property="ordQty" />
+		<result column="ORD_PRICE" property="ordPrice" />
+		<result column="MEM_ID" property="memId" />
+	</resultMap>
+	
+	<resultMap type="OrderVO" id="OrderMap">
+		<result column="ORD_NO" property="ordNo"/>
+		<result column="ORD_NAME" property="ordName"/>
+		<result column="ORD_TEL" property="ordTel"/>
+		<result column="ORD_REQ" property="ordReq"/>
+		<result column="ORD_DATE" property="ordDate"/>
+		<result column="ORD_RSV_DATE" property="ordRsvDate"/>
+		<result column="ORD_DLV_YN" property="ordDlyYn"/>
+		<result column="ORD_STAT" property="ordStat"/>
+		<result column="COOK_STAT" property="cookStat"/>
+		<result column="MEM_ID" property="memId"/>
+		<result column="LICENSE_NO" property="licenseNo"/>
+		<result column="SUM_PRICE" property="sumPrice"/>
+		<result column="FTRUCK_NAME" property="ftruckName"/>
+	</resultMap>
+	
+</mapper>

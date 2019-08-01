@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.foodtruck.dao.FoodTruckDAO">
+
+	<!-- 푸드트럭 상세정보 -->
+	<select id="getFoodTruck" resultMap="FoodTruckMap">
+		
+		SELECT * FROM FOODTRUCK
+		WHERE FTRUCK_NO = #{ftruckNo}
+		
+	</select>
+
+	<!-- 푸드트럭에 달린 갯수 카운트 -->
+	<select id="getReviewCount" resultMap="FoodTruckMap">
+	
+		SELECT COUNT(R.GRADE) AS COUNT
+		FROM REVIEW R, FOODTRUCK F 
+		WHERE F.FTRUCK_NO = R.FTRUCK_NO
+		AND F.FTRUCK_NO = #{ftruckNo}
+	
+	</select>
+	
+	<!-- 푸드트럭에 달린 리뷰 합계 -->
+	<select id="getReviewTotal" resultMap="FoodTruckMap">
+	
+		SELECT SUM(R.GRADE) AS TOTAL
+		FROM REVIEW R, FOODTRUCK F 
+		WHERE F.FTRUCK_NO = R.FTRUCK_NO
+		AND F.FTRUCK_NO = #{ftruckNo}
+	
+	</select>
+
+	<!-- 댓글 등록하고 평점 수정 -->
+	<update id="updateGrade">
+		
+		UPDATE FOODTRUCK 
+		SET FTRUCK_GRADE = #{ftruckGrade}
+		WHERE FTRUCK_NO = #{ftruckNo}
+		
+	</update>
+
+	<!-- 라이센스로 푸드트럭 정보 가져오기 -->
+	<select id="getFoodTruck2" resultMap="FoodTruckMap">
+	
+		SELECT * FROM FOODTRUCK
+		WHERE LICENSE_NO=#{licenseNo}
+	
+	</select>
+
+	<!-- 푸드트럭 카테고리별 리스트 -->
+	<select id="getCategoryList" resultMap="FoodTruckMap">
+	
+		<![CDATA[
+		
+			SELECT FFFT.*
+			FROM (SELECT FFT.*
+				  FROM (SELECT ROWNUM AS RNUM, FT.*
+						FROM (SELECT F.*, NVL2(F.FTRUCK_GRADE, 0, 10) AS COUNT
+							  FROM FOODTRUCK F, LICENSE L 
+							  WHERE CATEGORY=#{category}
+							  AND F.LICENSE_NO = L.LICENSE_NO
+							  AND L.APP_STAT = 'Y'
+							  AND F.FTRUCK_STATE = 'Y'
+							  ORDER BY L.APP_STAT DESC, F.FTRUCK_REG
+							  )FT
+						)FFT
+				  WHERE ROWNUM <=#{pageNo}+9
+				  )FFFT
+			WHERE RNUM >=#{pageNo}
+		
+		]]>	
+	
+	</select>
+
+	<!-- 푸드트럭 전체 리스트(조건이 있는) -->
+	<select id="getFoodTruckList" resultMap="FoodTruckMap" parameterType="int">
+	
+		<![CDATA[
+		
+			SELECT FFFT.* 
+			FROM (SELECT FFT.*
+				  FROM (SELECT ROWNUM AS RNUM, FT.*
+						FROM (SELECT F.*, L.APP_STAT, NVL2(F.FTRUCK_GRADE, 0, 10) AS COUNT 
+							  FROM FOODTRUCK F, LICENSE L 
+							  WHERE F.LICENSE_NO = L.LICENSE_NO
+							  AND L.APP_STAT = 'Y'
+							  AND F.FTRUCK_STATE = 'Y'
+							  ORDER BY L.APP_STAT DESC,F.FTRUCK_REG
+							  )FT
+						)FFT
+				  WHERE	ROWNUM <=#{pageNo}+9
+				  )FFFT
+			WHERE RNUM>=#{pageNo}
+		
+		]]>	
+		
+	</select>
+	
+	<!-- 푸드트럭 전체리스트(조건없는) -->
+	<select id="getAllFoodTruckList" resultMap="FoodTruckMap" parameterType="int">
+		
+		<![CDATA[
+		
+			SELECT FFFT.* 
+			FROM (SELECT FFT.*
+				  FROM (SELECT ROWNUM AS RNUM, FT.*
+						FROM (SELECT FOODTRUCK.* 
+							  FROM FOODTRUCK ORDER BY FTRUCK_REG
+							  )FT
+						)FFT
+				  WHERE ROWNUM < =#{pageNo}+9
+				  )FFFT
+			WHERE RNUM>=#{pageNo}
+
+		]]>
+		
+	</select>
+	
+	<!-- 운영중인 푸드트럭 전체 리스트 -->
+	<select id="getRunFoodTruckList" resultMap="FoodTruckMap" parameterType="int">
+	
+		<![CDATA[
+		
+			SELECT FFFT.*
+			FROM (SELECT FFT.*
+				  FROM (SELECT ROWNUM AS RNUM, FT.*
+						FROM (SELECT FOODTRUCK.* 
+							  FROM FOODTRUCK 
+							  WHERE FTRUCK_STATE ='Y'
+							  ORDER BY FTRUCK_REG
+							  )FT
+						)FFT
+				  WHERE ROWNUM < =#{pageNo}+9
+				  )FFFT
+			WHERE RNUM>=#{pageNo}
+		
+		]]>
+		
+	</select>
+	
+	<!-- 마감중인 푸드트럭 전체 리스트 -->
+	<select id="getEndFoodTruckList" resultMap="FoodTruckMap" parameterType="int">
+	
+		<![CDATA[
+		
+			SELECT FFFT.* 
+			FROM (SELECT FFT.*
+				  FROM (SELECT ROWNUM AS RNUM, FT.*
+						FROM (SELECT FOODTRUCK.* 
+							  FROM FOODTRUCK 
+							  WHERE FTRUCK_STATE ='N'
+							  ORDER BY FTRUCK_REG
+							  )FT
+						)FFT
+				  WHERE ROWNUM < =#{pageNo}+9
+				  )FFFT
+			WHERE RNUM>=#{pageNo}
+			
+		]]>
+		
+	</select>
+
+	<!-- 푸드트럭 위클리 랭킹 -->
+	<select id="getFoodTruckRank" resultMap="FoodTruckMap" parameterType="int">
+		
+		<![CDATA[
+		
+			SELECT * 
+			FROM (SELECT F.* 
+				  FROM FOODTRUCK F, LICENSE L 
+				  WHERE F.LICENSE_NO = L.LICENSE_NO
+				  AND F.FTRUCK_STATE = 'Y'
+				  ORDER BY L.APP_STAT DESC, FTRUCK_GRADE DESC
+				  )
+			WHERE ROWNUM<=10
+		
+		]]>
+		
+	</select>
+
+   <!-- 신규 푸드트럭 -->
+   <select id="getNewFoodTruck" resultMap="FoodTruckMap">
+   		
+   		<![CDATA[
+   		
+      		SELECT * 
+      		FROM (SELECT F.* 
+      			  FROM FOODTRUCK F, LICENSE L
+      			  WHERE F.LICENSE_NO = L.LICENSE_NO
+      			  ORDER BY L.APP_STAT DESC, FTRUCK_REG
+      			  )
+      		WHERE rownum<=10
+      
+      	]]>
+   </select>	
+
+	<!-- 푸드트럭 위치 Update -->
+	<update id="updateTruckPosition">
+		
+		UPDATE FOODTRUCK 
+		SET FTRUCK_ADDR=#{ftruckAddr}, FTRUCK_ADDR2=#{ftruckAddr2} 
+		WHERE LICENSE_NO=#{licenseNo}
+	
+	</update>
+	
+	<!-- 푸드트럭 삭제 -->
+	<delete id="deleteTruck">
+	
+		DELETE FROM FOODTRUCK
+		WHERE FTRUCK_NO = #{ftruckNo}
+	
+	</delete>
+
+	<!-- 푸드트럭 수정 -->
+	<update id="updateTruck">
+	
+		UPDATE FOODTRUCK 
+		SET FTRUCK_TEL = #{ftruckTel}, FTRUCK_DLV_YN = #{ftruckDlvYn},
+		FTRUCK_RSV_YN =#{ftruckRsvYn}, FTRUCK_IMG = #{ftruckImg}, FTRUCK_INTRO=#{ftruckIntro},
+		CATEGORY=#{category}, FTRUCK_CONDITION=#{ftruckCondtion}
+		WHERE LICENSE_NO = #{licenseNo}
+	
+	</update>
+	
+	<!-- 푸드트럭 카운트(조건이 있는&페이징처리) -->
+	<select id="getCountTruck" resultType="int">
+	
+		SELECT COUNT(*) FROM FOODTRUCK F,LICENSE L 
+		WHERE F.LICENSE_NO = L.LICENSE_NO
+		AND L.APP_STAT = 'Y'
+	
+	</select>
+	
+	<!-- 전체 푸드트럭 카운트(조건이 없는&페이징처리) -->
+	<select id="getAllCountTruck" resultType="int">
+	
+		SELECT COUNT(*) FROM FOODTRUCK 	
+	
+	</select>
+	
+	<!-- 운영중인 푸드트럭 카운트(페이징처리) -->
+	<select id="getRunCountTruck" resultType="int">
+	
+		SELECT COUNT(*) FROM FOODTRUCK
+		WHERE FTRUCK_STATE ='Y'
+
+	</select>
+	
+	<!-- 마감중인 푸드트럭 카운트(페이징처리) -->
+	<select id="getEndCountTruck" resultType="int">
+	
+		SELECT COUNT(*) FROM FOODTRUCK
+		WHERE FTRUCK_STATE ='N'
+	
+	</select>
+
+	<!-- 푸드트럭 카테고리별 카운트(페이징처리) -->
+	<select id="getCategoryCountTruck" resultType="int">
+	
+		SELECT COUNT(*) FROM FOODTRUCK F, LICENSE L
+		WHERE F.LICENSE_NO = L.LICENSE_NO
+		AND L.APP_STAT = 'Y'
+		AND CATEGORY=#{category}
+	
+	</select>
+
+	<!-- 푸드트럭에 달린 댓글 갯수 보여주기 -->
+	<select id="getReviewCountList" resultMap="FoodTruckMap">
+		
+		SELECT COUNT(F.FTRUCK_NO) AS COUNT, F.FTRUCK_NO 
+		FROM FOODTRUCK F, REVIEW R 
+		WHERE R.FTRUCK_NO = F.FTRUCK_NO
+		GROUP BY F.FTRUCK_NO
+	
+	</select>
+
+	<!-- resultMap -->
+	<resultMap type="FoodTruckVO" id="FoodTruckMap" extends="ReviewMap">
+		<result column="FTRUCK_NO" property="ftruckNo" />
+		<result column="LICENSE_NO" property="licenseNo" />
+		<result column="FTRUCK_NAME" property="ftruckName" />
+		<result column="FTRUCK_TEL" property="ftruckTel" />
+		<result column="FTRUCK_ADDR" property="ftruckAddr" />
+		<result column="FTRUCK_ADDR2" property="ftruckAddr2" />
+		<result column="FTRUCK_DLV_YN" property="ftruckDlvYn" />
+		<result column="FTRUCK_RSV_YN" property="ftruckRsvYn" />
+		<result column="FTRUCK_GRADE" property="ftruckGrade" />
+		<result column="FTRUCK_STATE" property="ftruckState" />
+		<result column="FTRUCK_IMG" property="ftruckImg" />
+		<result column="FTRUCK_INTRO" property="ftruckIntro" />
+		<result column="FTRUCK_REG" property="ftruckReg" />
+		<result column="FTRUCK_CONDITION" property="ftruckCondtion" />
+		<result column="CATEGORY" property="category" />
+		<result column="COUNT" property="count" />
+		<result column="TOTAL" property="total" />		
+		<result column="FTRUCK_EVENT" property="ftruckEvent" />
+		<result column="EVENT_NO" property="eventNo"/>
+		<result column="EVENT_REG2" property="eventReg2"/>
+	</resultMap>
+	
+	<resultMap type="com.foodtruck.vo.LicenseVO" id="LicenseMap">
+		<result column="LICENSE_NO" property="licenseNo" />
+		<result column="MEM_ID" property="memId" />
+		<result column="APP_STAT" property="appStat" />
+	</resultMap>
+	
+	<resultMap type="com.foodtruck.vo.ReviewVO" id="ReviewMap">
+		<result column="GRADE" property="grade" />
+		<result column="FTRUCK_NO" property="ftruckNo" />
+	</resultMap>
+
+</mapper>

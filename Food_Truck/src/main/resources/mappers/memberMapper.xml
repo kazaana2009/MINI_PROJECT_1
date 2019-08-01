@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.foodtruck.dao.MemberDAO">
+
+	<!-- 답변을 해주면 문의 테이블 답변여부 N -> Y 로 -->
+	<update id="qaSelStatUpdate">
+		UPDATE QA_SELLER Q
+		SET Q.QA_SEL_STAT = 'Y'
+		WHERE Q.QA_SEL_NO = #{qaSelNo}
+	</update>
+	
+	<!-- 고객문의 답변 (판매자) -->
+	<insert id="qaScReplyInsert">
+		INSERT INTO REPLY_SELLER
+		VALUES
+		(REP_SEL_SEQ.NEXTVAL,#{memId},#{qaSelNo},#{replySelContent},#{replySelReg})
+	</insert>
+	
+	<!-- 판매자에게 온 문의 리스트 -->
+	<select id="getSellerQaSelInfoList" resultMap="InquiryMap">
+		SELECT Q.*,F.FTRUCK_NAME
+		FROM QA_SELLER Q,ORDERS O,LICENSE L,FOODTRUCK F
+		WHERE O.LICENSE_NO = L.LICENSE_NO AND F.LICENSE_NO = O.LICENSE_NO AND L.LICENSE_NO = O.LICENSE_NO AND Q.MEM_ID = O.MEM_ID
+		AND L.MEM_ID = #{memId}
+		ORDER BY Q.QA_SEL_STAT ASC,Q.QA_SEL_NO ASC
+	</select>
+	
+	<!-- 사용자가  판매자에게 보낸 문의 내역 리스트 -->
+	<select id="getMemberQaSelInfoList" resultMap="InquiryMap">
+		SELECT Q.QA_SEL_NO,Q.MEM_ID,Q.ORD_NO,SUBSTR(Q.QA_SEL_TITLE,1,10)AS QA_SEL_TITLE,Q.QA_SEL_CONTENT,Q.QA_SEL_REG,Q.QA_SEL_CATEGORY1,Q.QA_SEL_CATEGORY2,Q.QA_SEL_TEL,Q.QA_SEL_STAT
+		FROM QA_SELLER Q , MEMBER M 
+		WHERE Q.MEM_ID = M.MEM_ID
+		AND LENGTH(Q.QA_SEL_TITLE) > 0
+		AND M.MEM_ID = #{memId}
+		ORDER BY Q.QA_SEL_STAT ASC,Q.QA_SEL_NO ASC
+	</select>
+	
+	<!-- 사용자가  관리자에게  문의 내역 리스트 -->
+	<select id="getMemberQaScInfoList" resultMap="InquiryMap">
+		SELECT Q.QA_SC_NO,Q.MEM_ID,Q.LICENSE_NO,SUBSTR(Q.QA_SC_TITLE,1,10)AS QA_SC_TITLE,Q.QA_SC_CONTENT,Q.QA_SC_REG,Q.QA_SC_CATEGORY1,Q.QA_SC_CATEGORY2,Q.QA_SC_TEL,Q.QA_SC_STAT
+		FROM QA_SC Q , MEMBER M 
+		WHERE Q.MEM_ID = M.MEM_ID
+		AND LENGTH(Q.QA_SC_TITLE) > 0
+		AND M.MEM_ID = #{memId}
+		ORDER BY Q.QA_SC_STAT ASC,Q.QA_SC_NO ASC
+	</select>
+	
+	<!-- 사용자 판매자에게  문의내역 정보 -->
+	<select id="getMemberQaSelInfo" resultMap="InquiryMap">
+		SELECT Q.* FROM QA_SELLER Q , MEMBER M 
+		WHERE Q.MEM_ID = M.MEM_ID 
+		AND Q.QA_SEL_NO = #{qaSelNo}
+	</select>
+	
+	<!-- 사용자 관리자에게 문의내역 정보 -->
+	<select id="getMemberQaScInfo" resultMap="InquiryMap">
+		SELECT Q.* FROM QA_SC Q , MEMBER M 
+		WHERE Q.MEM_ID = M.MEM_ID 
+		AND Q.QA_SC_NO = #{qaScNo}		
+	</select>
+
+	<!-- 판매자가 사용자에게 문의 답변 내용 -->
+	<select id="getMemberQaSelReply" resultMap="InquiryReplyMap">
+		SELECT R.* FROM REPLY_SELLER R, QA_SELLER Q
+		WHERE Q.QA_SEL_NO = R.QA_SEL_NO
+		AND R.QA_SEL_NO = #{qaSelNo}
+	</select>
+
+	<!-- 관리자가 사용자에게 문의 답변 내용 -->
+	<select id="getMemberQaScReply" resultMap="InquiryReplyMap">
+		SELECT R.* FROM REPLY_SC R, QA_SC Q
+		WHERE Q.QA_SC_NO = R.QA_SC_NO
+		AND R.QA_SC_NO = #{qaScNo}
+	</select>
+
+	<!-- 회원 정보 -->
+	<select id="getMember" resultMap="memberMap">
+
+		SELECT * FROM MEMBER
+		WHERE MEM_ID=#{memberId}
+
+	</select>
+
+	<!-- 회원 리스트 -->
+	<select id="getMemberList" resultMap="memberMap">
+
+		SELECT * FROM MEMBER
+		
+	</select>
+
+	<!-- ID 찾기 -->
+	<select id="getId" resultMap="memberMap">
+	
+		SELECT * FROM MEMBER
+		WHERE MEM_TEL = #{memberTel}
+	
+	</select>
+
+	<!-- PW 찾기 -->
+	<select id="getPw" resultMap="memberMap" parameterType="map">
+	
+		SELECT * FROM MEMBER
+		WHERE MEM_TEL = #{memberTel} 
+		and MEM_ID = #{memberId}
+
+	</select>
+
+	<!-- 회원 등록 -->
+	<insert id="insertMember">
+
+		INSERT INTO MEMBER
+		(MEM_ID, MEM_PW, MEM_NAME, MEM_TEL, MEM_AUTH)
+		VALUES
+		(#{memberId}, #{memberPw}, #{memberName}, #{memberTel}, #{memberAuth})
+
+	</insert>
+
+	<!-- 회원 수정 -->
+	<update id="updateMember">
+
+		UPDATE MEMBER
+		SET MEM_PW=#{memberPw}, MEM_NAME=#{memberName}, MEM_TEL=#{memberTel}
+		WHERE MEM_ID=#{memberId}
+
+	</update>
+
+	<!-- 회원 삭제 -->
+	<delete id="deleteMember">
+
+		DELETE FROM MEMBER
+		WHERE MEM_ID=#{memberId}
+
+	</delete>
+
+	<!-- 사업자 번호 -->
+	<select id="getLicenseNo" resultMap="licenseMap">
+
+		SELECT LICENSE.LICENSE_NO AS LICENSE_NO
+		FROM MEMBER
+		INNER JOIN LICENSE
+		ON MEMBER.MEM_ID = LICENSE.MEM_ID
+		WHERE MEMBER.MEM_ID=#{selId}
+
+	</select>
+	
+	<!-- 1:1 insert 구매자가 판매자한테 문의 -->
+	<insert id="insertInquiry">
+	
+		INSERT INTO QA_SELLER
+		(QA_SEL_NO, MEM_ID, ORD_NO, QA_SEL_TITLE, QA_SEL_CONTENT, QA_SEL_REG, QA_SEL_CATEGORY1, QA_SEL_CATEGORY2, QA_SEL_TEL)
+		VALUES
+		(QA_SEL_SEQ.NEXTVAL, #{memId}, #{ordNo}, #{qaSelTitle}, #{qaSelContent}, SYSDATE, #{qaSelCategory1}, #{qaSelCategory2}, #{qaSelTel})
+	
+	</insert>
+	
+	<!-- 1:1 insert 사용자도 판매자가 운영자한테  -->
+	<insert id="insertInquiry2">
+	
+		INSERT INTO QA_SC
+		(QA_SC_NO, MEM_ID, LICENSE_NO, QA_SC_TITLE, QA_SC_CONTENT, QA_SC_REG, QA_SC_CATEGORY1, QA_SC_CATEGORY2, QA_SC_TEL)
+		VALUES
+		(QA_SC_SEQ.NEXTVAL, #{memId}, #{licenseNo}, #{qaScTitle}, #{qaScContent}, SYSDATE, #{qaScCategory1}, #{qaScCategory2}, #{qaScTel})
+	
+	</insert>
+	
+	<!-- 1:1문의 list가져오기  -->
+	<select id="getMinquiryList" resultMap="InquiryMap">
+		
+		<![CDATA[
+		
+			SELECT FFFT.*
+			FROM (SELECT FFT.*
+				  FROM (SELECT ROWNUM AS RNUM, FT.*
+						FROM (SELECT * 
+							  FROM QA_SC 
+							  WHERE QA_SC_STAT='N' 
+							  AND LICENSE_NO IS NULL 
+							  ORDER BY QA_SC_NO ASC
+							  )FT
+						)FFT
+				  WHERE ROWNUM < =#{pageNo}+9
+				  )FFFT
+			WHERE RNUM>=#{pageNo}
+			
+		]]>
+		
+	</select>
+
+	<!-- 1:1문의 total count가져오기  -->
+	<select id="getMinquiryListcount" resultType="int">
+	
+		SELECT COUNT(*)
+		FROM QA_SC 
+		WHERE QA_SC_STAT='N' 
+		AND LICENSE_NO IS NULL
+	
+	</select>
+
+	<!-- 1:1문의 select  -->
+	<select id="getinfo" resultMap="InquiryMap">
+		
+		SELECT * FROM QA_SC
+		WHERE QA_SC_NO=#{qno}
+		
+	</select>
+	
+	<!-- 1:1문의 update -->
+	<update id="updateMinquiry">
+	
+		UPDATE QA_SC 
+		SET QA_SC_STAT='Y' 
+		WHERE QA_SC_NO=#{qno}
+		
+	</update>
+	
+	<!-- 결제 시 마일리지 증가  -->
+	<update id="updateMileage" parameterType="map">
+	
+		UPDATE MEMBER 
+		SET MILEAGE = #{mileage}
+		WHERE MEM_ID = #{memId}
+		
+	</update>
+	
+	<!-- resultMap  -->
+	<resultMap type="com.foodtruck.vo.MemberVO" id="memberMap">
+		<result column="MEM_ID" property="memberId" />
+		<result column="MEM_PW" property="memberPw" />
+		<result column="MEM_NAME" property="memberName" />
+		<result column="MEM_TEL" property="memberTel" />
+		<result column="MEM_AUTH" property="memberAuth" />
+		<result column="MILEAGE" property="mileage"/>
+	</resultMap>
+
+	<resultMap type="com.foodtruck.vo.LicenseVO" id="licenseMap">
+		<result column="LICENSE_NO" property="licenseNo" />
+	</resultMap>
+
+	<resultMap type="com.foodtruck.vo.MInquiryVO" id="InquiryMap">
+		<!-- 판매자 -->
+		<result column="QA_SC_NO" property="qaScNo" />
+		<result column="MEM_ID" property="memId" />
+		<result column="QA_SC_TITLE" property="qaScTitle" />
+		<result column="QA_SC_CONTENT" property="qaScContent" />
+		<result column="QA_SC_REG" property="qaScReg" />
+		<result column="QA_SC_CATEGORY1" property="qaScCategory1" />
+		<result column="QA_SC_CATEGORY2" property="qaScCategory2" />
+		<result column="QA_SC_TEL" property="qaScTel" />
+		<result column="QA_SC_STAT" property="qaScStat" />
+		<result column="LICENSE_NO" property="licenseNo" />
+		<!-- 구매자 -->
+		<result column="QA_SEL_NO" property="qaSelNo" />
+		<result column="QA_SEL_TITLE" property="qaSelTitle" />
+		<result column="QA_SEL_CONTENT" property="qaSelContent" />
+		<result column="QA_SEL_REG" property="qaSelReg" />
+		<result column="QA_SEL_CATEGORY1" property="qaSelCategory1" />
+		<result column="QA_SEL_CATEGORY2" property="qaSelCategory2" />
+		<result column="QA_SEL_TEL" property="qaSelTel" />
+		<result column="QA_SEL_STAT" property="qaSelStat" />
+		<result column="ORD_NO" property="ordNo" />
+		<result column="FTRUCK_NAME" property="ftruckName"/>
+	</resultMap>
+	
+	<resultMap type="com.foodtruck.vo.MinquiryReplyVO" id="InquiryReplyMap">
+		<!-- 판매자 -->
+		<result column="REPLY_SEL_NO" property="replySelNo" />
+		<result column="MEM_ID" property="memId" />
+		<result column="QA_SEL_NO" property="qaSelNo" />
+		<result column="REPLY_SEL_CONTENT" property="replySelContent" />
+		<result column="REPLY_SEL_REG" property="replySelReg" />
+	
+		<!-- 관리자 -->
+		<result column="REPLY_SC_NO" property="replyScNo" />
+		<result column="MEM_ID" property="memId" />
+		<result column="QA_SC_NO" property="qaScNo" />
+		<result column="REPLY_SC_CONTENT" property="replyScContent" />
+		<result column="REPLY_SC_REG" property="replyScReg" />		
+	</resultMap>
+	
+</mapper>

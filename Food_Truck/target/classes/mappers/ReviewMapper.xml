@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+	<mapper namespace="com.foodtruck.dao.ReviewDAO">
+	
+	<!-- 리뷰 리스트 -->
+	<select id="getReviewList" resultMap="ReviewMap">
+	
+		SELECT * FROM REVIEW
+		WHERE FTRUCK_NO=#{ftruckNo}
+	
+	</select>
+
+	<!-- 리뷰 쓸 때, 먹었던 해당  푸드트럭 이름이 나올 수 있도록 하는 쿼리문 -->
+	<select id="getFoodTrcukName" resultMap="ReviewMap">
+		
+		SELECT O.ORD_NO, F.LICENSE_NO, F.FTRUCK_NO, F.FTRUCK_NAME
+		FROM ORDERS O
+		INNER JOIN PRODUCT P
+		ON O.LICENSE_NO = P.LICENSE_NO
+		INNER JOIN FOODTRUCK F
+		ON O.LICENSE_NO = F.LICENSE_NO
+		AND F.LICENSE_NO = P.LICENSE_NO
+		WHERE MEM_ID=#{memId}
+		GROUP BY O.ORD_NO, F.LICENSE_NO, F.FTRUCK_NO, F.FTRUCK_NAME
+		ORDER BY F.FTRUCK_NAME
+		
+	</select>
+	
+	<!-- 리뷰 등록  -->
+	<insert id="insertReview">
+	
+		INSERT INTO REVIEW 
+		(REV_NO, FTRUCK_NO, REV_CONTENT, REV_DTM, GRADE, MEM_ID)
+		VALUES 
+		(REV_SEQ.NEXTVAL, #{ftruckNo}, #{revContent}, SYSDATE, #{grade}, #{memId})
+		
+	</insert>
+	
+	<!-- 리뷰 삭제 -->
+	<delete id="reviewDelete">
+		DELETE FROM REVIEW
+		WHERE REV_NO = #{revNo}
+	</delete>
+	
+	<!-- resultMap -->	
+	<resultMap type="ReviewVO" id="ReviewMap">
+		<result column="FTRUCK_NO" property="ftruckNo"/>
+		<result column="LICENSE_NO" property="licenseNo"/>
+		<result column="REV_NO" property="revNo"/>
+		<result column="REV_CONTENT" property="revContent"/>
+		<result column="REV_DTM" property="revDtm"/>
+		<result column="REV_DEL_YN" property="revDelYn"/>
+		<result column="GRADE" property="grade"/>
+		<result column="MEM_ID" property="memId"/>
+		<result column="ORD_NO" property="ordNo"/>
+		<result column="FTRUCK_NAME" property="ftruckName"/>
+	</resultMap>
+	
+</mapper>

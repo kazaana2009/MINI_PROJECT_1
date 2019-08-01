@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.foodtruck.dao.NoticeDAO">
+
+	<!-- 공지사항 정보 -->
+	<select id="getNotice" resultMap="NoticeMap">
+	
+		SELECT * FROM NOTICE_BD
+		WHERE NOTICE_NO=#{noticeNo}
+		
+	</select>
+
+	<!-- 공지사항 전체 리스트 -->
+	<select id="getNoticeBoardList" resultMap="NoticeMap">
+	
+		<![CDATA[
+		
+			SELECT NTTT.* 
+			FROM (SELECT NTT.*
+				  FROM (SELECT ROWNUM AS RNUM, NT.*
+						FROM (SELECT * 
+							  FROM NOTICE_BD
+							  ORDER BY NOTICE_NO DESC
+							  )NT
+						)NTT
+				  WHERE ROWNUM<=#{pageNo}+9
+				  )NTTT 
+			WHERE RNUM>=#{pageNo}
+		
+		]]>
+
+	</select>
+
+
+	<!-- 공지사항 등록 -->
+	<insert id="insertNotice" parameterType="com.foodtruck.vo.NoticeVO">
+	
+		INSERT INTO NOTICE_BD
+		(NOTICE_NO, MEM_ID, NOTICE_TITLE, NOTICE_CONTENT)
+		values
+		((SELECT NVL(MAX(NOTICE_NO)+1, 1)FROM NOTICE_BD), #{memId}, #{noticeTitle}, #{noticeContent})
+		
+	</insert>
+
+	<!-- 공지사항 수정 -->
+	<update id="updateNotice" parameterType="com.foodtruck.vo.NoticeVO">
+	
+		UPDATE NOTICE_BD
+		SET NOTICE_TITLE=#{noticeTitle}, NOTICE_CONTENT=#{noticeContent}
+		WHERE NOTICE_NO=#{noticeNo}
+	
+	</update>
+
+	<!-- 공지사항 조회수 -->
+	<update id="countNotice" parameterType="int">
+		
+		UPDATE NOTICE_BD S
+		SET NOTICE_CNT = NOTICE_CNT+1
+		WHERE NOTICE_NO=#{noticeNo}
+		
+	</update>
+
+	<!-- 공지사항 삭제 -->
+	<delete id="deleteNotice" parameterType="com.foodtruck.vo.NoticeVO">
+		
+		DELETE FROM NOTICE_BD 
+		WHERE NOTICE_NO=#{noticeNo}
+	
+	</delete>
+	
+	<!-- 공지사항게시물 count가져오기 -->
+	<select id="getCountNotice" resultType="int">
+	
+		SELECT COUNT(*) FROM NOTICE_BD
+	
+	</select>
+
+	<!-- resultMap -->
+	<resultMap type="NoticeVO" id="NoticeMap">
+		<result column="NOTICE_NO" property="noticeNo" />
+		<result column="MEM_ID" property="memId" />
+		<result column="NOTICE_TITLE" property="noticeTitle" />
+		<result column="NOTICE_CONTENT" property="noticeContent" />
+		<result column="NOTICE_REG" property="noticeReg" />
+		<result column="NOTICE_CNT" property="noticeCnt" />
+
+	</resultMap>
+
+</mapper>

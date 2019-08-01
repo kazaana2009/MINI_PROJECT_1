@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.foodtruck.dao.SellerDAO">
+
+	<!-- 푸드트럭 정보 -->
+	<select id="getFoodTruck" resultMap="FoodTruckMap">
+	
+		SELECT * 
+		FROM FOODTRUCK 
+		WHERE LICENSE_NO=#{licenseNo}
+	
+	</select>
+	
+	<!-- 오늘의 주문 내역 리스트 -->
+	<select id="getTodayOrderList" resultMap="SellerMap">
+	
+		SELECT ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, 
+			   ORDERS.MEM_ID, LISTAGG(PROD_NAME, ',') WITHIN GROUP(ORDER BY ORD_NO) prodName, orders.payment
+		FROM ORDERS, PRODUCT
+		WHERE ORDERS.LICENSE_NO = PRODUCT.LICENSE_NO
+		AND ORDERS.LICENSE_NO = #{licenseNo}
+		AND TO_CHAR(ORD_DATE, 'YY/MM/DD') = TO_CHAR(SYSDATE, 'YY/MM/DD')
+		GROUP BY ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, ORDERS.MEM_ID, orders.payment
+ 	
+ 	</select>
+ 	
+ 	<select id="getTodayRsvList" resultMap="SellerMap">
+ 	
+ 		SELECT ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, 
+			   ORDERS.MEM_ID, LISTAGG(PROD_NAME, ',') WITHIN GROUP(ORDER BY ORD_NO) prodName
+		FROM ORDERS, PRODUCT
+		WHERE ORDERS.LICENSE_NO = PRODUCT.LICENSE_NO
+		AND ORDERS.LICENSE_NO = #{licenseNo}
+		AND TO_CHAR(ORD_DATE, 'YY/MM/DD') = TO_CHAR(SYSDATE, 'YY/MM/DD')
+		and ord_rsv_date != 'none'
+		GROUP BY ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, ORDERS.MEM_ID
+		
+ 	</select>
+ 	
+ 	<!-- 오늘의 배달주문 리스트 -->
+ 	<select id="getTodayDlvList" resultMap="SellerMap">
+ 	
+ 		SELECT ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, 
+			   ORDERS.MEM_ID, LISTAGG(PROD_NAME, ',') WITHIN GROUP(ORDER BY ORD_NO) prodName
+		FROM ORDERS, PRODUCT
+		WHERE ORDERS.LICENSE_NO = PRODUCT.LICENSE_NO
+		AND ORDERS.LICENSE_NO = #{licenseNo}
+		AND TO_CHAR(ORD_DATE, 'YY/MM/DD') = TO_CHAR(SYSDATE, 'YY/MM/DD')
+		AND ORD_DLV_YN = 'Y'
+		GROUP BY ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, ORDERS.MEM_ID
+		
+ 	</select>
+ 	
+ 	<!-- 오늘의 주문 통계 -->
+ 	<select id="getTodayPayment" resultMap="SellerMap">
+ 	
+ 		SELECT  DECODE(PAYMENT,'1','카드','0','현금',null,'총주문') payment, 
+ 				COUNT(*) count,
+		  		TO_CHAR(SUM(SUM_PRICE), '999,999') sumprice,
+		  		ROUND(RATIO_TO_REPORT(SUM(SUM_PRICE)) OVER(PARTITION BY GROUPING_ID(PAYMENT))*100) ratio
+		FROM ORDERS
+		WHERE TO_CHAR(ORD_DATE, 'YY/MM/DD') = TO_CHAR(SYSDATE, 'YY/MM/DD')
+		AND LICENSE_NO=#{licenseNo}
+		GROUP BY ROLLUP(PAYMENT)
+		
+ 	</select>
+
+	<!-- 주문 리스트 -->
+	<select id="getOrderList" resultMap="SellerMap">
+
+ 		SELECT ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, 
+			   ORDERS.MEM_ID, LISTAGG(PROD_NAME, ',') WITHIN GROUP(ORDER BY ORD_NO) prodName
+		FROM ORDERS, PRODUCT
+		WHERE ORDERS.LICENSE_NO = PRODUCT.LICENSE_NO
+		AND ORDERS.LICENSE_NO = #{licenseNo}
+		GROUP BY ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, ORD_DATE, ORD_RSV_DATE, ORD_DLV_YN, ORDERS.MEM_ID
+ 
+	</select>
+	
+	<!-- 판매자 사업자번호 리스트 -->
+	<select id="getLicense" resultMap="SellerMap">
+	
+		SELECT LICENSE.LICENSE_NO AS LICENSE_NO, F.FTRUCK_NAME ftruckName,
+			   F.FTRUCK_INTRO ftruckIntro, F.FTRUCK_REG ftruckReg,
+			   F.CATEGORY category, F.FTRUCK_GRADE ftruckGrade
+		FROM MEMBER
+		INNER JOIN LICENSE
+		ON MEMBER.MEM_ID = LICENSE.MEM_ID
+		INNER JOIN FOODTRUCK F
+		ON F.LICENSE_NO = LICENSE.LICENSE_NO
+ 		WHERE MEMBER.MEM_ID=#{memberId} 
+		AND LICENSE.APP_STAT='Y'
+	
+	</select>
+	
+	<!-- 판매자 푸드트럭 승인 flg -->
+	<select id="getLicense2" resultMap="SellerMap">
+	
+		SELECT LICENSE.LICENSE_NO AS LICENSE_NO, F.FTRUCK_NAME ftruckName,
+			   F.FTRUCK_INTRO ftruckIntro, F.FTRUCK_REG ftruckReg,
+			   F.CATEGORY category, F.FTRUCK_GRADE ftruckGrade
+		FROM MEMBER
+		INNER JOIN LICENSE
+		ON MEMBER.MEM_ID = LICENSE.MEM_ID
+		INNER JOIN FOODTRUCK F
+		ON F.LICENSE_NO = LICENSE.LICENSE_NO
+ 		WHERE MEMBER.MEM_ID=#{memberId} 
+		AND LICENSE.APP_STAT='I'
+	
+	</select>
+	
+	<!-- 푸드트럭 마감 -->
+	<update id="closeFoodTruck">
+	
+		UPDATE FOODTRUCK 
+		SET FTRUCK_STATE='N' 
+		WHERE LICENSE_NO=#{licenseNo}
+		
+	</update>
+	
+	<!-- 푸드트럭 운영 -->
+	<update id="openFoodTruck">
+	
+		UPDATE FOODTRUCK 
+		SET FTRUCK_STATE='Y' 
+		WHERE LICENSE_NO=#{licenseNo}
+		
+	</update>
+	
+	<!-- 매출 등록 -->
+	<insert id="insertPrice">
+	
+		INSERT INTO sales_management(license_no, sum_price, sales_date)
+		select license_no,
+        sum(sum_price) sumPrice,
+        TO_CHAR(sysdate, 'YYYY-MM-DD') ordDate
+      	from orders 
+  		where license_no=#{licenseNo}
+  		and to_char(ord_date, 'YYYY-MM-DD')=TO_CHAR(sysdate, 'YYYY-MM-DD')
+ 		group by TO_CHAR(sysdate, 'YYYY-MM-DD'), license_no
+	
+	</insert>
+	
+	<!-- 매출 수정 -->
+	<update id="updatePrice">
+	
+		update sales_management set
+		sales_date = to_char(sysdate, 'YYYY-MM-DD'),
+		sum_price = (select sum(sum_price) sum_price 
+					from orders 
+					where license_no=#{licenseNo} 
+					and to_char(ord_date, 'YYYY-MM-DD')=to_char(sysdate, 'YYYY-MM-DD'))
+  		where license_no=#{licenseNo}
+  		and sales_date=TO_CHAR(sysdate, 'YYYY-MM-DD')
+	
+	</update>
+	
+	<!-- 매출 조회 -->
+	<select id="getPrice" resultMap="SellerMap">
+	
+		select license_no, TO_CHAR(sales_date, 'YYYY-MM-DD') salesDate,
+				to_char(sum(sum_price), '999,999') sumPrice
+		from sales_management 
+		where license_no=#{licenseNo}
+		group by LICENSE_NO, TO_CHAR(sales_date, 'YYYY-MM-DD')
+	
+	</select>
+	
+	<!-- 중복 체크 -->
+	<select id="getPrice1" resultMap="SellerMap">
+	
+		select license_no, 
+      	TO_CHAR(sales_date, 'YYYY-MM-DD') salesDate,
+				to_char(sum(sum_price), '999,999') sumPrice 
+		from sales_management 
+		where license_no=#{licenseNo} and sales_date=to_char(sysdate, 'YYYY-MM-DD')
+		group by license_no, sales_date
+	
+	</select>
+	
+	<!-- 푸드트럭 리스트  -->
+	<select id="getFoodTruckList" resultMap="FoodTruckMap">
+	
+		SELECT * FROM FOODTRUCK
+		WHERE LICENSE_NO = #{licenseNo}
+		
+	</select>
+	
+	<!-- 푸드트럭 등록 -->
+	<insert id="insertFoodTruck" parameterType="FoodTruckVO">
+	
+		INSERT INTO FOODTRUCK
+		(FTRUCK_NO, ftruck_name, FTRUCK_ADDR2, FTRUCK_DLV_YN, FTRUCK_RSV_YN, ftruck_state, ftruck_img, FTRUCK_REG, CATEGORY, FTRUCK_GRADE, LICENSE_NO)
+		VALUES
+		(FTRUCK_SEQ.nextval, #{ftruckName}, #{ftruckAddr2}, #{ftruckDlvYn}, #{ftruckRsvYn}, 'N', #{ftruckImg}, SYSDATE, #{category}, 0, #{licenseNo})
+		
+	</insert>
+	
+	<!-- 라이센스 번호 등록 -->
+	<insert id="insertLicense" parameterType="LicenseVO">
+		insert into license(license_no, mem_id, app_stat)
+		values(#{licenseNo}, #{memId}, 'I') 
+	</insert>
+	
+	<select id="getDate" parameterType="String" resultMap="SellerMap" resultType="java.util.List">
+	
+		SELECT TO_CHAR(ORD_DATE, 'YYYY-MM-DD') ordDate, 
+        TO_CHAR(SUM(SUM_PRICE), '999,999') sumPrice
+  		FROM ORDERS 
+  		WHERE LICENSE_NO=#{licenseNo}
+ 		GROUP BY TO_CHAR(ORD_DATE, 'YYYY-MM-DD') 
+ 		
+	</select>
+	
+	<!-- id로 라이센스 번호 가져오기 -->
+	<select id="getInfo" resultMap="LicenseMap">
+	
+		SELECT * 
+		FROM LICENSE 
+		WHERE MEM_ID='${memId}'
+	
+	</select>
+	
+	<!-- 1:1문의 list가져오기  -->
+	<select id="getSinquiryList" resultMap="InquiryMap">
+		
+		<![CDATA[
+		
+			SELECT FFFT.* 
+			FROM (SELECT FFT.*
+				  FROM (SELECT ROWNUM AS RNUM, FT.*
+						FROM (SELECT * 
+							  FROM QA_SC 
+							  WHERE QA_SC_STAT='N' 
+							  AND LICENSE_NO IS NOT NULL 
+							  ORDER BY QA_SC_NO ASC
+							  )FT
+						)FFT
+				  WHERE ROWNUM < =#{pageNo}+9
+				  )FFFT
+			WHERE RNUM>=#{pageNo}
+			
+		]]>
+	</select>
+
+	<!-- 1:1문의 total count가져오기  -->
+	<select id="getSinquiryListcount" resultType="int">
+	
+		SELECT COUNT(*)
+		FROM QA_SC 
+		WHERE QA_SC_STAT='N'
+		AND LICENSE_NO IS NOT NULL
+		
+	</select>
+	
+	<!-- lisenceNo로 푸드트럭 정보가져오기  -->
+	<select id="getFoodtruckDtail" resultMap="FoodTruckMap">
+	
+		SELECT * 
+		FROM FOODTRUCK 
+		WHERE LICENSE_NO=#{licenseNo}
+		
+	</select>
+	
+	<!-- 푸드트럭별 상품 리스트   -->
+	<select id="getProductList" resultMap="ProductMap">
+	
+		SELECT * 
+		FROM PRODUCT 
+		WHERE LICENSE_NO=#{licenseNo}
+	
+	</select>
+	
+	<!-- 푸드트럭신청->거절후 메시지 -->
+	<select id="getCheckList" resultMap="LicenseMap">
+	select * from LICENSE where MEM_ID=#{memId}
+	</select>
+	
+	<!-- 푸드트럭 거절후 수정하기 btn클릭시 모달창에 푸드트럭 정보 가져오기 -->
+	<select id="getFoodTruckInfo" resultMap="FoodTruckMap">
+	select f.FTRUCK_NAME,f.FTRUCK_ADDR2,f.FTRUCK_DLV_YN,f.FTRUCK_RSV_YN,f.LICENSE_NO,f.CATEGORY 
+    from foodtruck f ,license l
+    where f.LICENSE_NO=l.LICENSE_NO
+    and l.MEM_ID=#{memId}
+	
+	</select>
+	
+	<!-- 푸드트럭 신청 거절후 수정 버튼 클릭시 모달창에 가져오는 푸드트럭 정보 가져오기->수정요청(license Table) -->
+	<update id="fixUpdate">
+	update license set license_no=#{licenseNo},APP_STAT=#{appStat} where MEM_ID=#{memId}
+	</update>
+	
+	<!-- 푸드트럭 신청 거절후 수정 버튼 클릭시 모달창에 가져오는 푸드트럭 정보 가져오기->수정요청(Foodtruck Table) -->
+	<update id="fixUpdateFoodtruck">
+	update foodtruck set ftruck_name=#{ftruckName},FTRUCK_ADDR2=#{ftruckAddr2},FTRUCK_DLV_YN=#{ftruckDlvYn},FTRUCK_RSV_YN=#{ftruckRsvYn},ftruck_img=#{ftruckImg},CATEGORY=#{category},LICENSE_NO=#{licenseNo}
+	where FTRUCK_NO=#{ftruckNo}
+	</update>
+	
+	<!--resultMap -->
+	<resultMap type="com.foodtruck.vo.MInquiryVO" id="InquiryMap">
+		<result column="QA_SC_NO" property="qaScNo" />
+		<result column="MEM_ID" property="memId" />
+		<result column="QA_SC_TITLE" property="qaScTitle" />
+		<result column="QA_SC_CONTENT" property="qaScContent" />
+		<result column="QA_SC_REG" property="qaScReg" />
+		<result column="QA_SC_CATEGORY1" property="qaScCategory1" />
+		<result column="QA_SC_CATEGORY2" property="qaScCategory2" />
+		<result column="QA_SC_TEL" property="qaScTel" />
+		<result column="QA_SC_STAT" property="qaScStat" />
+		<result column="LICENSE_NO" property="licenseNo" />
+	</resultMap>
+	
+	<resultMap type="SellerVO" id="SellerMap">
+		<result column="ORD_NO" property="ordNo"/>
+		<result column="ORD_NAME" property="ordName"/>
+		<result column="ORD_TEL" property="ordTel"/>
+		<result column="ORD_REQ" property="ordReq"/>
+		<result column="ORD_DATE" property="ordDate"/>
+		<result column="ORD_RSV_DATE" property="ordRsvDate"/>
+		<result column="ORD_DLV_YN" property="ordDlyYn"/>
+		<result column="MEM_ID" property="memId"/>
+		<result column="LICENSE_NO" property="licenseNo"/>
+		<result column="PROD_NAME" property="prodName"/>
+		<result column="PAYMENT" property="payment"/>
+		<result column="sum_price" property="sumPrice"/>
+	</resultMap>
+	
+	<resultMap type="LicenseVO" id="LicenseMap">
+		<result column="LICENSE_NO" property="licenseNo" />
+		<result column="MEM_ID" property="memId" />
+		<result column="APP_STAT" property="appStat" />
+		<result column="APP_MSG" property="appMsg" />
+	</resultMap>
+	
+	<resultMap type="FoodTruckVO" id="FoodTruckMap">
+		<result column="FTRUCK_NO" property="ftruckNo" />
+		<result column="FTRUCK_NAME" property="ftruckName" />
+		<result column="FTRUCK_TEL" property="ftruckTel" />
+		<result column="FTRUCK_ADDR" property="ftruckAddr" />
+		<result column="FTRUCK_ADDR2" property="ftruckAddr2" />
+		<result column="FTRUCK_INTRO" property="ftruckIntro" />
+		<result column="FTRUCK_REG" property="ftruckReg" />
+		<result column="FTRUCK_DLV_YN" property="ftruckDlvYn" />
+		<result column="FTRUCK_RSV_YN" property="ftruckRsvYn" />
+		<result column="FTRUCK_STATE" property="ftruckState" />
+		<result column="FTRUCK_GRADE" property="ftruckGrade" />
+		<result column="FTRUCK_IMG" property="ftruckImg" />
+		<result column="LATITUDE" property="latitude" />
+		<result column="LONGITUDE" property="longitude" />
+		<result column="CATEGORY" property="category" />
+		<result column="LICENSE_NO" property="licenseNo" />
+	</resultMap>
+	
+	<resultMap type="ProductVO" id="ProductMap">
+		<result column="PROD_NO" property="prodNo" />
+		<result column="PROD_NAME" property="prodName" />
+		<result column="PROD_CONTENT" property="prodContent" />
+		<result column="PROD_IMG" property="prodImg" />
+		<result column="PROD_PRICE" property="prodPrice" />
+		<result column="LICENSE_NO" property="licenseNo" />
+		<result column="FTRUCK_NO" property="ftruckNo" />
+	</resultMap>
+	
+</mapper>

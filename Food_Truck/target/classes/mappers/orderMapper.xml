@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.foodtruck.dao.OrderDAO">
+
+	<!-- 주문 정보 -->
+	<select id="getOrder" resultMap="OrderMap">
+
+		SELECT * FROM ORDERS
+		WHERE ord_no=#{ordNo}
+
+	</select>
+
+	<!-- 주문 리스트 -->
+	<select id="getOrderList" resultMap="OrderMap">
+
+		SELECT * FROM ORDERS
+
+	</select>
+
+	<!-- 사용자 주문 상태 -->
+	<select id="ordStatFind" resultMap="OrderMap">
+	
+		SELECT * 
+		FROM ORDERS O
+		WHERE O.ORD_DLV_YN = 'Y' 
+		AND O.ORD_CHECK != '3' 
+		AND O.MEM_ID = #{memId, jdbcType=VARCHAR}
+		
+	</select>
+	
+	<!-- 비회원 주문번호로 주문내역보기 -->
+	<select id="getNonmemberInfo" resultMap="OrderMap" parameterType="map">
+
+		SELECT O.*,D.*,P.* 
+		FROM ORDERS O,ORDERDETAIL D,PRODUCT P
+		WHERE P.PROD_NO = D.PROD_NO 
+		AND O.ORD_NO = D.ORD_NO 
+		AND O.ORD_NO = #{ordNo}
+		AND O.ORD_TEL = #{ordTel}
+
+	</select>
+
+	<!-- 사용자 주문내역 -->
+	<select id="getMemberOrderList" resultMap="OrderMap">
+		
+		SELECT O.*,D.*,P.PROD_NAME,F.FTRUCK_NAME
+		FROM ORDERS O,ORDERDETAIL D,PRODUCT
+		P,FOODTRUCK F
+		WHERE O.ORD_NO = D.ORD_NO
+		AND D.PROD_NO = P.PROD_NO
+		AND P.FTRUCK_NO = F.FTRUCK_NO
+		AND O.MEM_ID = #{memId}
+		ORDER BY COOK_STAT ASC, ORD_DATE DESC, O.ORD_NO DESC
+		
+	</select>
+
+	<!-- 주문 등록 -->
+	<insert id="insertOrder" parameterType="map">
+
+		INSERT INTO ORDERS
+		(ORD_NO, ORD_NAME, ORD_TEL, ORD_REQ, LICENSE_NO,
+		SUM_PRICE, ORD_DLV_YN, PAYMENT, ORD_DATE,ORD_RSV_DATE, MEM_ID)
+		VALUES
+		(TO_CHAR(SYSDATE,'YYMMDD')||LPAD(ORD_SEQ.NEXTVAL,5,0), #{ordName}, #{ordTel}, #{ordReq}, #{licenseNo}, 
+		#{sumPrice}, #{ordDlyYn}, #{payment}, TO_CHAR(SYSDATE, 'YYMMDD'),#{ordRsvDate},#{memId})
+		
+		<selectKey keyProperty="ordNo" resultType="String">
+			
+			 <![CDATA[
+			 	SELECT ORD_NO FROM ORDERS
+				WHERE ROWNUM < 2
+				ORDER BY ORD_NO DESC
+			 ]]>
+
+		</selectKey>
+
+	</insert>
+
+	<!-- 판매자 입장 / 상태 변경하기 (대기 / 조리 / 완료) -->
+	<update id="cookStatChange">
+
+		UPDATE ORDERS
+		SET COOK_STAT=#{cookStat}
+		WHERE ORD_NO=#{ordNo}
+
+	</update>
+
+	<!-- 새로운 예약 주문 -->
+	<select id="getNewCountRsv" resultMap="OrderMap">
+	
+		SELECT COUNT(O.ORD_CHECK) AS newCount, F.FTRUCK_NAME
+		FROM ORDERS O, FOODTRUCK F
+		WHERE O.LICENSE_NO IN (SELECT L.LICENSE_NO 
+							   FROM LICENSE L 
+							   WHERE L.MEM_ID = #{memId}
+							   )
+		AND O.ORD_CHECK = '1'
+		AND O.ORD_DLV_YN = 'N'
+		AND O.LICENSE_NO = F.LICENSE_NO
+		GROUP BY F.FTRUCK_NAME
+		
+	</select>
+	
+	<!-- 새로운 배달 주문 -->
+	<select id="getNewCountDlv" resultMap="OrderMap">
+	
+		SELECT COUNT(O.ORD_CHECK)AS newCount, F.FTRUCK_NAME
+		FROM ORDERS O,FOODTRUCK F
+		WHERE O.LICENSE_NO IN (SELECT L.LICENSE_NO
+							   FROM LICENSE L 
+							   WHERE L.MEM_ID = #{memId}
+							   )
+		AND O.ORD_CHECK = '1'
+		AND O.ORD_DLV_YN = 'Y'
+		AND O.LICENSE_NO = F.LICENSE_NO
+		GROUP BY F.FTRUCK_NAME
+		
+	</select>	
+
+
+	<!-- 새로운  예약 주문 확인하면 ORD_CHECK 'Y'로 변경 -->
+	<update id="checkNewOrderRsv">
+	
+		UPDATE ORDERS O 
+		SET O.ORD_CHECK = '2'
+		WHERE O.ORD_DLV_YN = 'N'
+		AND O.LICENSE_NO IN (SELECT LICENSE_NO 
+							 FROM LICENSE
+							 WHERE MEM_ID = #{memId}
+							 )
+							 
+	</update>
+	
+	<!-- 새로운  배달 주문 확인하면 ORD_CHECK 'Y'로 변경 -->
+	<update id="checkNewOrderDlv">
+	
+		UPDATE ORDERS O
+		SET O.ORD_CHECK = '2'
+		WHERE O.ORD_DLV_YN = 'Y'
+		AND O.ORD_CHECK != '3' 
+		AND O.LICENSE_NO IN (SELECT LICENSE_NO 
+							 FROM LICENSE
+							 WHERE MEM_ID = #{memId}
+							 )
+	
+	</update>
+	
+	<!-- 구매자가 주문한 푸드트럭 순위 뽑자! -->
+	<select id="getFavoriteFoodtruck" resultMap="OrderMap">
+	
+		<![CDATA[
+		
+			SELECT A.*
+			FROM (SELECT COUNT(O.LICENSE_NO) AS favoriteCount, F.LICENSE_NO, F.FTRUCK_NO, F.FTRUCK_NAME, ROW_NUMBER() OVER(ORDER BY COUNT(O.LICENSE_NO) DESC) AS RANK
+				  FROM ORDERS O, FOODTRUCK F
+				  WHERE MEM_ID=#{memId}
+				  AND O.LICENSE_NO = F.LICENSE_NO
+				  GROUP BY F.FTRUCK_NAME, F.FTRUCK_NO, F.LICENSE_NO) A
+			WHERE A.RANK <= 5
+			
+		 ]]>
+		
+		<!-- 
+			rank -> 중복 순위 다음은 해당 개수만큼 건너뛰고 반환
+			dense_rank() -> 중복 순위 상관없이 순차적으로 반환
+			row_number() -> 중복과 관계 없이 무조건 순서대로 반환
+			http://codingdojang.com/scode/255
+		 -->
+	</select>
+	
+	<delete id="deleteOrder">
+		
+		DELETE FROM ORDERS
+		WHERE ORD_NO=#{ordNo}
+
+	</delete>
+
+	<!-- 판매자가 배달중 예상시간 선택후 사용자에게 알림(배달시간,푸드트럭이름) -->
+	<select id="dlvTimeSend" resultMap="OrderMap">
+	
+		SELECT D.DLV_DATE, F.FTRUCK_NAME
+		FROM DELIVERYDETAIL D, ORDERS O, ORDERDETAIL R, FOODTRUCK F
+		WHERE O.ORD_NO = D.ORD_NO 
+		AND O.ORD_NO = R.ORD_NO 
+		AND D.ORD_NO = R.ORD_NO 
+		AND F.LICENSE_NO = O.LICENSE_NO 
+		AND O.ORD_CHECK = '2' 
+		AND O.ORD_DLV_YN = 'Y'
+		AND O.MEM_ID = #{memId} 
+		GROUP BY F.FTRUCK_NAME, D.DLV_DATE	
+		
+	</select>
+	
+	<!-- 사용자가 배달시간을 확인하면 3으로 변경 -->
+	<update id="dlvTimeUpdate">
+	
+		UPDATE ORDERS O
+		SET O.ORD_CHECK = '3' 
+		WHERE O.ORD_CHECK = '2' 
+		AND O.ORD_DLV_YN = 'Y' 
+		AND O.MEM_ID = #{memId}
+	
+	</update>
+	
+	<!-- 1:1 구매자가 구매한 주문번호 가져오기 -->
+	<select id="getOrdNo" resultMap="OrderMap">
+	
+		SELECT * 
+		FROM ORDERS O,MEMBER M
+		WHERE M.MEM_ID = O.MEM_ID 
+		AND M.MEM_ID = #{memId}
+		
+	</select>
+
+	<!-- resultMap -->
+	<resultMap type="OrderVO" id="OrderMap">
+		<result column="ORD_NO" property="ordNo" />
+		<result column="ORD_NAME" property="ordName" />
+		<result column="ORD_TEL" property="ordTel" />
+		<result column="ORD_DATE" property="ordDate" />
+		<result column="ORD_RSV_DATE" property="ordRsvDate" />
+		<result column="ORD_DLV_YN" property="ordDlyYn" />
+		<result column="ORD_REQ" property="ordReq" />
+		<result column="SUM_PRICE" property="sumPrice" />
+		<result column="ORD_QTY" property="ordQty" />
+		<result column="ORD_PRICE" property="ordPrice" />
+		<result column="MEM_ID" property="memId" />
+		<result column="LICENSE_NO" property="licenseNo" />
+		<result column="PROD_NAME" property="prodName" />
+		<result column="FTRUCK_NAME" property="ftruckName" />
+		<result column="COOK_STAT" property="cookStat" />
+		<result column="NEWCOUNT" property="newCount" />
+		<result column="ORD_CHECK" property="ordCheck" />
+		<result column="PATMENT" property="payment" />
+		<result column="FAVORITECOUNT" property="favoriteCount"/>
+		<result column="RANK" property="rank"/>
+		<result column="FTRUCK_NO" property="ftruckNo"/>
+		<result column="DLV_DATE" property="dlvDate" />
+	</resultMap>
+
+	<resultMap type="LicenseVO" id="LicenseMap">
+		<result column="LICENSE_NO" property="licenseNo" />
+		<result column="PROD_NAME" property="prodName" />
+		<result column="FTRUCK_NAME" property="ftruckName" />
+	</resultMap>
+
+</mapper>
